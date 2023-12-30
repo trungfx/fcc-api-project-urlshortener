@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
+const { MongoClient } = require("mongodb");
 const app = express();
 
 // Basic Configuration
@@ -10,25 +10,25 @@ const port = process.env.PORT || 3000;
 const mongodb_uri =
   process.env.MONGO_URI ||
   "mongodb+srv://trungdeadnow:zxcvbnm1134@cluster0.3nm3k0m.mongodb.net/fcc-api-project-shorturl?retryWrites=true&w=majority";
-app.use(cors());
-
-// Use body parser
-app.use(bodyParser.urlencoded({ extended: true }));
-// app.use(express.urlencoded({ extended: true }));
-
-// Use database
-mongoose.connect(mongodb_uri, {
+const client = new MongoClient(mongodb_uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-// Schema for collection
-const Schema = mongoose.Schema;
-const urlSchema = new Schema({
-  original_url: { type: String, required: true, unique: true },
-  short_url: { type: Number, required: true, unique: true },
-});
-const UrlModel = mongoose.model("Url", urlSchema);
+app.use(cors());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Connect to MongoDB
+async function connectToMongo() {
+  try {
+    await client.connect();
+    console.log("Connected to MongoDB");
+  } catch (err) {
+    console.error("Error connecting to MongoDB:", err);
+  }
+}
+
+connectToMongo();
 
 // Endpoint
 app.use("/public", express.static(`${process.cwd()}/public`));
@@ -47,49 +47,52 @@ function isValidUrl(url) {
   return urlRegex.test(url);
 }
 
-app.post(
-  "/api/shorturl",
-  (req, res, next) => {
-    const originalUrl = req.body.url.replace(/\/$/, "");
-    if (!isValidUrl(originalUrl)) {
-      res.json({ error: "invalid url" });
-    } else {
-      req.body.url = originalUrl;
-      next();
-    }
-  },
-  async (req, res) => {
-    const originalUrl = req.body.url;
+app.post("/api/shorturl", async (req, res) => {
+  const originalUrl = req.body.url.replace(/\/$/, "");
 
-    const existingUrl = await UrlModel.findOne({ original_url: originalUrl });
-
-    if (existingUrl) {
-      res.json({
-        original_url: existingUrl.original_url,
-        short_url: existingUrl.short_url,
-      });
-    } else {
-      const count = await UrlModel.countDocuments({});
-
-      const newUrl = new UrlModel({
-        original_url: originalUrl,
-        short_url: count + 1,
-      });
-
-      await newUrl.save();
-
-      res.json({
-        original_url: newUrl.original_url,
-        short_url: newUrl.short_url,
-      });
-    }
+  if (!isValidUrl(originalUrl)) {
+    res.json({ error: "invalid url" });
+    return;
   }
-);
+
+  const db = client.db("fcc-api-project-shorturl");
+  const urlCollection = db.collection("urls");
+
+  const existingUrl = await urlCollection.findOne({
+    original_url: originalUrl,
+  });
+
+  if (existingUrl) {
+    res.json({
+      original_url: existingUrl.original_url,
+      short_url: existingUrl.short_url,
+    });
+  } else {
+    const count = await urlCollection.countDocuments({});
+
+    const newUrl = {
+      original_url: originalUrl,
+      short_url: count + 1,
+    };
+
+    await urlCollection.insertOne(newUrl);
+
+    res.json({
+      original_url: newUrl.original_url,
+      short_url: newUrl.short_url,
+    });
+  }
+});
 
 app.get("/api/shorturl/:shorturl", async (req, res) => {
   const shortUrl = req.params.shorturl;
 
-  const existingShortUrl = await UrlModel.findOne({ short_url: shortUrl });
+  const db = client.db("fcc-api-project-shorturl");
+  const urlCollection = db.collection("urls");
+
+  const existingShortUrl = await urlCollection.findOne({
+    short_url: +shortUrl,
+  });
 
   if (existingShortUrl) {
     res.redirect(existingShortUrl.original_url);
