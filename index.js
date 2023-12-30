@@ -7,6 +7,9 @@ const app = express();
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
+const mongodb_uri =
+  process.env.MONGO_URI ||
+  "mongodb+srv://trungdeadnow:zxcvbnm1134@cluster0.3nm3k0m.mongodb.net/fcc-api-project-shorturl?retryWrites=true&w=majority";
 app.use(cors());
 
 // Use body parser
@@ -14,7 +17,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // app.use(express.urlencoded({ extended: true }));
 
 // Use database
-mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect(mongodb_uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
