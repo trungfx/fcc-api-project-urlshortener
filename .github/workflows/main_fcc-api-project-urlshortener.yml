@@ -59,4 +59,4 @@ jobs:
           app-name: 'fcc-api-project-urlshortener'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4CA09D27E8F04D1AB3A0ECD4F8C87EC7 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_B4EA526D6E6E4BE1A69F85A9B7F4E5FD }}
