@@ -9,7 +9,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 const mongodb_uri =
   process.env.MONGO_URI ||
-  "mongodb+srv://trungdeadnow:zxcvbnm1134@cluster0.3nm3k0m.mongodb.net/fcc-api-project-shorturl?retryWrites=true&w=majority";
+  "mongodb+srv://trungdeadnow:zxcvbnm1134@cluster0.3nm3k0m.mongodb.net";
+const db_name = process.env.DB_NAME || "fcc-api-project-shorturl";
+const collection_name = process.env.COLLECTION_NAME || "urls";
+
 const client = new MongoClient(mongodb_uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -29,6 +32,8 @@ async function connectToMongo() {
 }
 
 connectToMongo();
+const db = client.db(db_name);
+const urlCollection = db.collection(collection_name);
 
 // Endpoint
 app.use("/public", express.static(`${process.cwd()}/public`));
@@ -54,9 +59,6 @@ app.post("/api/shorturl", async (req, res) => {
     res.json({ error: "invalid url" });
     return;
   }
-
-  const db = client.db("fcc-api-project-shorturl");
-  const urlCollection = db.collection("urls");
 
   const existingUrl = await urlCollection.findOne({
     original_url: originalUrl,
@@ -86,9 +88,6 @@ app.post("/api/shorturl", async (req, res) => {
 
 app.get("/api/shorturl/:shorturl", async (req, res) => {
   const shortUrl = req.params.shorturl;
-
-  const db = client.db("fcc-api-project-shorturl");
-  const urlCollection = db.collection("urls");
 
   const existingShortUrl = await urlCollection.findOne({
     short_url: +shortUrl,
