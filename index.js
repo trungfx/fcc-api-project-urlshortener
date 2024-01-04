@@ -4,6 +4,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { MongoClient } = require("mongodb");
 const app = express();
+const dns = require("dns");
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
@@ -49,13 +50,29 @@ app.get("/api/hello", function (req, res) {
 // Check URL
 function isValidUrl(url) {
   const urlRegex = /^(ftp|http|https):\/\/[^ "]+$/;
-  return urlRegex.test(url);
+
+  if (!urlRegex.test(url)) {
+    return false;
+  }
+
+  const protocol = url.split("://")[0];
+  const hostname = url.split("://")[1].split("/")[0];
+
+  return new Promise((resolve) => {
+    dns.lookup(hostname, (error) => {
+      if (error) {
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
 }
 
 app.post("/api/shorturl", async (req, res) => {
   const originalUrl = req.body.url.replace(/\/$/, "");
 
-  if (!isValidUrl(originalUrl)) {
+  if (!(await isValidUrl(originalUrl))) {
     res.json({ error: "invalid url" });
     return;
   }
